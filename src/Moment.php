@@ -1224,6 +1224,60 @@ class Moment extends \DateTime
     }
 
     /**
+     * @param null|string $format
+     * @param null|FormatsInterface $formatsInterface
+     *
+     * @return string
+     * @throws MomentException
+     */
+    public function formatNoLocale($format = null, $formatsInterface = null)
+    {
+        // set default format
+        if ($format === null)
+        {
+            $format = \DateTime::ISO8601;
+        }
+
+        // handle diverse format types
+        if ($formatsInterface instanceof FormatsInterface)
+        {
+            $format = $formatsInterface->format($format);
+        }
+
+        // handle ordinals
+        if (strpos($format, 'S') !== false)
+        {
+            preg_match_all('/(\wS)/', $format, $matches);
+
+            if (count($matches) >= 1)
+            {
+                foreach ($matches[1] as $part)
+                {
+                    $token = substr($part, 0, 1);
+                    $number = $this->format($token);
+                    $format = str_replace($part, $this->formatOrdinal($number, $token), $format);
+                }
+            }
+        }
+
+        // handle text
+        if (strpos($format, '[') !== false)
+        {
+            preg_match_all('/\[([^\[]*)\]/', $format, $matches);
+
+            foreach ($matches[1] as $part)
+            {
+                $format = preg_replace('/\[' . $part . '\]/u', preg_replace('/(\w)/u', '\\\\\1', $part), $format);
+            }
+        }
+
+        // render moment
+        $format = parent::format($format);
+
+        return $format;
+    }
+
+    /**
      * @param string $rawDateTimeString
      *
      * @return Moment
